@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>交通費割り勘アプリ（汎用版）</title>
+  <!-- ホーム画面アイコン用設定 (必要に応じて icon.png を同じフォルダに配置してください) -->
+  <link rel="apple-touch-icon" href="icon.png">
+
+  <!-- PDF生成ライブラリ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #f0f4f8;
+      --card: #ffffff;
+      --primary: #4a90e2;
+      --primary-hover: #357abd;
+      --text: #333;
+      --accent-light: #e6f0fa;
+      --border: #ddd;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      padding: 16px;
+      background: var(--bg);
+      margin: 0;
+      color: var(--text);
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    h1 { 
+      font-size: 22px; 
+      margin-bottom: 16px; 
+      color: #2c3e50; 
+      text-align: center;
+    }
+
+    .card {
+      background: var(--card);
+      padding: 20px;
+      margin-bottom: 16px;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    h3 {
+      margin-top: 0;
+      border-bottom: 2px solid var(--accent-light);
+      padding-bottom: 8px;
+      color: var(--primary);
+    }
+
+    label {
+      font-weight: 700;
+      display: block;
+      margin-top: 14px;
+      font-size: 14px;
+      color: #555;
+    }
+
+    input[type="text"],
+    input[type="date"],
+    input[type="number"],
+    select {
+      width: 100%;
+      padding: 12px;
+      margin-top: 6px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 16px;
+      background: #fafafa;
+      box-sizing: border-box;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: #fff;
+    }
+
+    button {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 12px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 12px;
+      box-shadow: 0 4px 6px rgba(74, 144, 226, 0.2);
+      transition: all 0.2s ease;
+    }
+
+    button:hover { 
+      background: var(--primary-hover); 
+      transform: translateY(-1px);
+    }
+
+    button.secondary {
+      background: #fff;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+      box-shadow: none;
+    }
+    
+    button.secondary:hover {
+      background: var(--accent-light);
+    }
+
+    .checkbox-area { 
+      display: grid; 
+      grid-template-columns: 1fr 1fr; 
+      gap: 10px; 
+      margin-top: 8px; 
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      background: #f9f9f9;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #eee;
+      font-weight: normal;
+      margin-top: 0;
+      cursor: pointer;
+    }
+    
+    .checkbox-label input {
+      margin-right: 8px;
+      transform: scale(1.2);
+    }
+
+    .result {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      margin-top: 20px;
+      border: 1px solid #eee;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
+    .result-header {
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--primary);
+      margin-bottom: 10px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+
+    .calc-steps {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 15px;
+      font-size: 13px;
+      color: #666;
+      line-height: 1.6;
+      border-left: 4px solid #ccc;
+    }
+
+    @media (max-width: 400px) {
+      .checkbox-area { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="card">
+    <h1>🚙 交通費割り勘アプリ</h1>
+
+    <label>大会・イベント名</label>
+    <input type="text" id="eventName" placeholder="例：〇〇大会、合宿など" />
+
+    <label>日付</label>
+    <input type="date" id="eventDate" />
+  </div>
+
+  <div class="card" id="car-1">
+    <h3>計算データ入力</h3>
+
+    <label>運転手（ガソリン代を受け取る人）</label>
+    <select id="driver-1">
+      <option value="家族A">家族 A</option>
+      <option value="家族B">家族 B</option>
+      <option value="家族C">家族 C</option>
+      <option value="家族D">家族 D</option>
+      <option value="家族E">家族 E</option>
+    </select>
+
+    <label>乗車した家族（割り勘する人を選択）</label>
+    <div id="families-1" class="checkbox-area">
+      <label class="checkbox-label"><input type="checkbox" value="家族A"> 家族 A</label>
+      <label class="checkbox-label"><input type="checkbox" value="家族B"> 家族 B</label>
+      <label class="checkbox-label"><input type="checkbox" value="家族C"> 家族 C</label>
+      <label class="checkbox-label"><input type="checkbox" value="家族D"> 家族 D</label>
+      <label class="checkbox-label"><input type="checkbox" value="家族E"> 家族 E</label>
+    </div>
+
+    <label>走行距離 (往復)</label>
+    <div style="position:relative;">
+      <input type="number" id="distance-1" placeholder="0" inputmode="decimal" />
+      <span style="position:absolute; right:12px; top:12px; color:#aaa;">km</span>
+    </div>
+
+    <label>燃費 (リッターあたり)</label>
+    <div style="position:relative;">
+      <input type="number" id="fuel-1" placeholder="例: 10" inputmode="decimal" />
+      <span style="position:absolute; right:12px; top:12px; color:#aaa;">km/L</span>
+    </div>
+
+    <label>ガソリン単価</label>
+    <div style="position:relative;">
+      <input type="number" id="price-1" placeholder="例: 170" inputmode="numeric" />
+      <span style="position:absolute; right:12px; top:12px; color:#aaa;">円/L</span>
+    </div>
+
+    <label>高速料金 (往復)</label>
+    <div style="position:relative;">
+      <input type="number" id="highway-1" placeholder="0" inputmode="numeric" />
+      <span style="position:absolute; right:12px; top:12px; color:#aaa;">円</span>
+    </div>
+
+    <label>駐車場代</label>
+    <div style="position:relative;">
+      <input type="number" id="parking-1" placeholder="0" inputmode="numeric" />
+      <span style="position:absolute; right:12px; top:12px; color:#aaa;">円</span>
+    </div>
+  </div>
+
+  <button onclick="calculate()">計算を実行</button>
+  <button class="secondary" onclick="savePdf()">🖨 結果をPDFで保存</button>
+
+  <div id="pdf-area" style="padding: 10px;">
+    <div id="pdf-header" style="text-align:center; font-size:16px; font-weight:bold; margin: 20px 0; color:#333; display:none;"></div>
+    <div id="results"></div>
+  </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    document.getElementById('eventDate').value = `${yyyy}-${mm}-${dd}`;
+});
+
+function getCheckedFamilies(id) {
+  return [...document.querySelectorAll(`#${id} input[type=checkbox]`)]
+    .filter(b => b.checked)
+    .map(b => b.value);
+}
+
+function calculate() {
+  const resultsDiv = document.getElementById('results');
+  const pdfHeader = document.getElementById('pdf-header');
+  resultsDiv.innerHTML = '';
+  
+  const eventName = document.getElementById('eventName').value || '名称未設定';
+  const eventDate = document.getElementById('eventDate').value;
+  
+  const driver = document.getElementById('driver-1').value;
+  const families = getCheckedFamilies('families-1');
+
+  const distance = Number(document.getElementById('distance-1').value);
+  const fuel = Number(document.getElementById('fuel-1').value);
+  const price = Number(document.getElementById('price-1').value);
+  const highway = Number(document.getElementById('highway-1').value);
+  const parking = Number(document.getElementById('parking-1').value);
+
+  if (families.length === 0) {
+    alert("割り勘する家族（メンバー）を少なくとも1つ選択してください。");
+    return;
+  }
+  if (!fuel || fuel <= 0) {
+    alert("燃費を入力してください（0以外）。");
+    return;
+  }
+  if (!distance && distance !== 0) {
+     alert("走行距離を入力してください。");
+     return;
+  }
+
+  const gasCost = (distance / fuel) * price;
+  const totalCost = gasCost + highway + parking;
+  const perFamilyCost = totalCost / families.length;
+
+  pdfHeader.style.display = 'block';
+  pdfHeader.innerHTML = `${eventDate}　${eventName}<br><span style="font-size:14px; font-weight:normal;">交通費精算書</span>`;
+
+  const box = document.createElement('div');
+  box.className = 'result';
+
+  box.innerHTML = `
+    <div class="result-header">精算結果</div>
+    <div style="font-size:15px; margin-bottom:8px;">
+      <strong>支払先（運転手）：</strong> ${driver}
+    </div>
+    <div style="font-size:18px; color:#e74c3c; font-weight:bold; margin: 10px 0;">
+      1家族あたり：${Math.ceil(perFamilyCost).toLocaleString()} 円
+      <span style="font-size:12px; color:#666; font-weight:normal;">(端数切り上げ)</span>
+    </div>
+    <div style="margin-bottom:10px; font-size:14px;">
+      <strong>合計立替額：</strong> ${Math.floor(totalCost).toLocaleString()} 円
+    </div>
+    <div style="font-size:14px; margin-bottom:10px;">
+       <strong>対象：</strong> ${families.join('、')} (${families.length}家族)
+    </div>
+
+    <div class="calc-steps">
+      <strong>📝 計算の詳細：</strong><br>
+      <div style="margin-top:4px;">
+      ① ガソリン代<br>
+      　 (${distance} km ÷ ${fuel} km/L) × ${price} 円/L = <strong>${Math.round(gasCost).toLocaleString()} 円</strong>
+      </div>
+      <div style="margin-top:8px;">
+      ② 合計立替額<br>
+      　 ガソリン代 ${Math.round(gasCost).toLocaleString()} + 高速 ${highway.toLocaleString()} + 駐車 ${parking.toLocaleString()} = <strong>${Math.round(totalCost).toLocaleString()} 円</strong>
+      </div>
+      <div style="margin-top:8px;">
+      ③ 1家族あたりの負担額<br>
+      　 ${Math.round(totalCost).toLocaleString()} 円 ÷ ${families.length} 家族 = <strong>${Math.ceil(perFamilyCost).toLocaleString()} 円</strong>
+      </div>
+    </div>`;
+
+  resultsDiv.appendChild(box);
+  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function savePdf() {
+  const resultsDiv = document.getElementById('results');
+  if (!resultsDiv.hasChildNodes()) {
+    alert("先に「計算を実行」ボタンを押してください。");
+    return;
+  }
+
+  const eventName = document.getElementById('eventName').value || '精算書';
+  const eventDate = document.getElementById('eventDate').value || '日付未設定';
+  const fileName = `交通費精算_${eventDate}_${eventName}.pdf`;
+
+  const element = document.getElementById('pdf-area');
+
+  const opt = {
+    margin: 10,
+    filename: fileName,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  };
+
+  const btn = event.target;
+  const originalText = btn.innerText;
+  btn.innerText = "生成中...";
+  
+  html2pdf().set(opt).from(element).save().then(() => {
+      btn.innerText = originalText;
+  });
+}
+</script>
+
+</body>
+</html>
